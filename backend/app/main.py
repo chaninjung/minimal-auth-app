@@ -3,14 +3,13 @@
 Builds the FastAPI app, wires the store, registers routes, and (when
 run directly) starts uvicorn. The :func:`create_app` factory takes an
 optional ``Settings`` so tests can construct an isolated app instance
-with a temp DB and a fast bcrypt cost — see ``tests/test_auth.py``.
+with a temp DB and fast argon2id parameters — see ``tests/test_auth.py``.
 """
 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-import bcrypt
 import structlog
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.exceptions import RequestValidationError
@@ -21,6 +20,7 @@ from app.config import Settings, get_settings
 from app.logging_setup import RequestContextMiddleware, configure as configure_logging
 from app.routers import auth as auth_router
 from app.routers import me as me_router
+from app.services.password import hash_password
 from app.store import Store
 
 
@@ -48,10 +48,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # the signin failure path when the user doesn't exist, so the
         # response time looks the same whether the email is registered
         # or not — closing a timing-based enumeration channel.
-        app.state.dummy_hash = bcrypt.hashpw(
-            b"_never_matches_",
-            bcrypt.gensalt(rounds=settings.bcrypt_rounds),
-        ).decode("utf-8")
+        # Pre-bake an argon2id hash at the configured cost. The signin
+        # failure path compares against this when the user does not
+        # exist — keeping the response time roughly constant across
+        # "user not found" and "wrong password", closing a timing-based
+        # email-enumeration channel (see REPORT §6).
+        app.state.dummy_hash = hash_password(
+            "_never_matches_",
+            time_cost=settings.argon2_time_cost,
+            memory_cost=settings.argon2_memory_cost,
+            parallelism=settings.argon2_parallelism,
+        )
 
         log.info(
             "server.started",

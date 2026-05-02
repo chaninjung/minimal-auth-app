@@ -7,9 +7,9 @@ Design notes:
   accidental field addition in the DB layer cannot leak through.
 * Sign-in returns the same opaque error for "no such user" and "wrong
   password" so an attacker cannot enumerate valid emails.
-* The 401 path runs bcrypt unconditionally — even when the user does
-  not exist — so the response timing does not depend on whether the
-  email is registered.
+* The 401 path runs argon2id unconditionally — even when the user
+  does not exist — so the response timing does not depend on whether
+  the email is registered.
 * The auth token is delivered as a HttpOnly, ``SameSite=Lax`` cookie.
   This keeps it out of JavaScript reach (XSS-resistant) and removes
   the need for the frontend to manage token storage.
@@ -43,7 +43,12 @@ def signup(
     store: Store = Depends(get_store),
     settings: Settings = Depends(get_settings),
 ) -> UserView:
-    hashed = hash_password(body.password, rounds=settings.bcrypt_rounds)
+    hashed = hash_password(
+        body.password,
+        time_cost=settings.argon2_time_cost,
+        memory_cost=settings.argon2_memory_cost,
+        parallelism=settings.argon2_parallelism,
+    )
     try:
         user = store.create_user(body.email, hashed)
     except EmailTakenError:
@@ -69,10 +74,10 @@ def signin(
     settings: Settings = Depends(get_settings),
     dummy_hash: str = Depends(get_dummy_hash),
 ) -> UserView:
-    # Constant-time-ish: ALWAYS run bcrypt, even if the user doesn't
-    # exist, so the 401 response time doesn't reveal whether the email
-    # is registered. We compare against a pre-baked dummy hash that no
-    # password will match.
+    # Constant-time-ish: ALWAYS run argon2id, even if the user
+    # doesn't exist, so the 401 response time doesn't reveal whether
+    # the email is registered. We compare against a pre-baked dummy
+    # hash that no password will match.
     try:
         user = store.user_by_email(body.email)
         password_hash = user.password_hash

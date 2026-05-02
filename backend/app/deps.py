@@ -24,7 +24,7 @@ def get_store(request: Request) -> Store:
 
 
 def get_dummy_hash(request: Request) -> str:
-    """Pre-baked bcrypt hash used for constant-time signin failures."""
+    """Pre-baked argon2id hash used for constant-time signin failures."""
     return request.app.state.dummy_hash
 
 

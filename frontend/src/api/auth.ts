@@ -1,7 +1,7 @@
 import { api } from "./client";
 
-// Wire types — must match the Go handlers' DTO (userView in
-// internal/handlers/auth.go and the credBody body shape).
+// Wire types — must match the Pydantic models in `app/schemas.py`
+// on the backend and the validation schema in `src/lib/schemas.ts`.
 export type User = {
   id: number;
   email: string;
@@ -12,21 +12,12 @@ export type Credentials = {
   password: string;
 };
 
-export async function signUp(creds: Credentials): Promise<User> {
-  const { data } = await api.post<User>("/auth/signup", creds);
-  return data;
-}
+export const signUp = (creds: Credentials): Promise<User> =>
+  api.post<User>("/auth/signup", creds);
 
-export async function signIn(creds: Credentials): Promise<User> {
-  const { data } = await api.post<User>("/auth/signin", creds);
-  return data;
-}
+export const signIn = (creds: Credentials): Promise<User> =>
+  api.post<User>("/auth/signin", creds);
 
-export async function signOut(): Promise<void> {
-  await api.post("/auth/signout");
-}
+export const signOut = (): Promise<void> => api.post<void>("/auth/signout");
 
-export async function getMe(): Promise<User> {
-  const { data } = await api.get<User>("/me");
-  return data;
-}
+export const getMe = (): Promise<User> => api.get<User>("/me");

@@ -18,11 +18,14 @@ from app.main import create_app
 def client(tmp_path: Path):
     settings = Settings(
         db_path=str(tmp_path / "test.db"),
-        bcrypt_rounds=4,  # fast for tests
+        # Tiny argon2 parameters keep the suite fast.
+        argon2_time_cost=1,
+        argon2_memory_cost=8,
+        argon2_parallelism=1,
         jwt_secret="test-secret",
         cookie_secure=False,
         token_ttl_seconds=60,
-        rate_limit_enabled=False,  # don't trip slowapi during tests
+        rate_limit_enabled=False,  # don't trip rate limit during tests
     )
     app = create_app(settings)
     with TestClient(app) as c:

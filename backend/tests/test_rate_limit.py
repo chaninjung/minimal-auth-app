@@ -18,7 +18,9 @@ from app.main import create_app
 def client(tmp_path: Path):
     settings = Settings(
         db_path=str(tmp_path / "test.db"),
-        bcrypt_rounds=4,
+        argon2_time_cost=1,
+        argon2_memory_cost=8,
+        argon2_parallelism=1,
         jwt_secret="test-secret",
         cookie_secure=False,
         token_ttl_seconds=60,

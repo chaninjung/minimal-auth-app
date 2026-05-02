@@ -1,34 +1,64 @@
 """Password hashing.
 
-bcrypt was chosen because it is purpose-built for password storage:
-slow by design, automatic per-hash salt, tunable work factor. The hash
-itself encodes the algorithm and cost, so future cost rotations can be
-done lazily on next login.
+argon2id was chosen over bcrypt for three concrete reasons:
+
+* **Memory-hard.** argon2id forces an attacker to commit RAM per
+  guess — GPUs and ASICs lose their cost advantage. bcrypt is only
+  CPU-hard.
+* **No 72-byte truncation.** bcrypt silently caps input at 72 bytes,
+  so any policy that allows longer passwords is misleading. argon2id
+  has no such limit.
+* **Modern winner.** argon2id won the Password Hashing Competition
+  (PHC 2015) and is OWASP's first recommendation in 2024.
+
+Defaults follow OWASP's recommended minimum for argon2id:
+``time_cost=3``, ``memory_cost=64 MiB``, ``parallelism=4``. Tests
+override to a much smaller configuration to keep the suite fast.
+
+The hash format encodes algorithm + cost + salt + digest, so future
+parameter rotations can be detected via ``check_needs_rehash`` and
+applied lazily on next login.
 """
 
 from __future__ import annotations
 
-import bcrypt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
+
+# A standalone verifier — works on any argon2 hash because the params
+# are encoded in the hash itself, not on the verifier instance.
+_VERIFIER = PasswordHasher()
 
 
-def hash_password(password: str, rounds: int = 12) -> str:
-    """Return a bcrypt hash. ``rounds`` is the cost log2 (12 ≈ 250ms).
+def hash_password(
+    password: str,
+    *,
+    time_cost: int = 3,
+    memory_cost: int = 65536,  # 64 MiB
+    parallelism: int = 4,
+) -> str:
+    """Hash with argon2id at the given cost parameters.
 
-    Tests use ``rounds=4`` to keep the suite fast.
+    OWASP-recommended minimum for argon2id (2024) is
+    ``time_cost=2, memory_cost=19456, parallelism=1``. We default a
+    little higher; tests pass much smaller numbers for speed.
     """
-    salt = bcrypt.gensalt(rounds=rounds)
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    hasher = PasswordHasher(
+        time_cost=time_cost,
+        memory_cost=memory_cost,
+        parallelism=parallelism,
+    )
+    return hasher.hash(password)
 
 
 def check_password(hashed: str, password: str) -> bool:
-    """Verify a password.
+    """Constant-time verify.
 
-    ``bcrypt.checkpw`` does a constant-time comparison with respect to
-    the password length, so it does not leak timing information about
-    correctness. Malformed hashes return ``False`` rather than raising
-    so the caller does not need a try/except for error paths.
+    ``PasswordHasher.verify`` returns ``True`` on match and raises on
+    mismatch (or on a malformed/foreign-format hash). We collapse both
+    failure modes to ``False`` so callers don't need a try/except.
     """
     try:
-        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
-    except (ValueError, TypeError):
+        return _VERIFIER.verify(hashed, password)
+    except (VerifyMismatchError, InvalidHashError):
         return False

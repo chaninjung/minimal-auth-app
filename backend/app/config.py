@@ -40,9 +40,12 @@ class Settings(BaseSettings):
     # Set ``true`` behind HTTPS so the cookie carries the Secure flag.
     cookie_secure: bool = False
 
-    # --- Password hashing ---------------------------------------------------
-    # bcrypt work factor (cost = 2^rounds). Tests override to 4 for speed.
-    bcrypt_rounds: int = 12
+    # --- Password hashing (argon2id) ---------------------------------------
+    # OWASP-recommended minimum (2024) for argon2id is t=2, m=19MiB, p=1.
+    # We default a little higher; tests override to much smaller numbers.
+    argon2_time_cost: int = 3
+    argon2_memory_cost: int = 65536  # 64 MiB, in KiB units
+    argon2_parallelism: int = 4
 
     # --- Rate limiting ------------------------------------------------------
     # Disabled in tests so a fixture can hammer the endpoints without
