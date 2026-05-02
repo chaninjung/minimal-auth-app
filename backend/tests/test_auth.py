@@ -22,6 +22,7 @@ def client(tmp_path: Path):
         jwt_secret="test-secret",
         cookie_secure=False,
         token_ttl_seconds=60,
+        rate_limit_enabled=False,  # don't trip slowapi during tests
     )
     app = create_app(settings)
     with TestClient(app) as c:

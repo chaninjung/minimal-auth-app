@@ -8,7 +8,7 @@ size; see REPORT.md §5 for the discussion of OpenAPI codegen at scale.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class Credentials(BaseModel):
@@ -17,20 +17,21 @@ class Credentials(BaseModel):
     Validation rules mirror the frontend zod schema. The frontend
     validates eagerly to give fast feedback; the backend re-validates
     because we never trust the client.
+
+    ``EmailStr`` runs a real RFC 5321 / 5322 check via the
+    ``email-validator`` library — much stricter than a substring check
+    on '@', and matches the ``z.string().email()`` rule on the frontend.
     """
 
-    email: str = Field(..., min_length=3, max_length=254)
+    email: EmailStr = Field(..., max_length=254)
     password: str = Field(..., min_length=8, max_length=128)
 
-    @field_validator("email")
+    @field_validator("email", mode="after")
     @classmethod
     def _normalise_email(cls, v: str) -> str:
-        # Trim + lower so "Foo@Bar.com" and "foo@bar.com" don't create
+        # Lower-case so "Foo@Bar.com" and "foo@bar.com" don't create
         # two accounts. The DB column is also COLLATE NOCASE for safety.
-        v = v.strip().lower()
-        if "@" not in v:
-            raise ValueError("email is invalid")
-        return v
+        return v.strip().lower()
 
 
 class UserView(BaseModel):

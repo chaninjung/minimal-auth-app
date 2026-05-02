@@ -11,6 +11,7 @@ A minimal authentication app:
 
 ```
 .
+├── .github/workflows/      # CI — backend pytest, frontend build/test
 ├── backend/                # Python / FastAPI server
 │   ├── app/
 │   │   ├── main.py         # FastAPI factory + lifespan + uvicorn entry
@@ -18,9 +19,11 @@ A minimal authentication app:
 │   │   ├── store.py        # SQLite repository
 │   │   ├── schemas.py      # Pydantic request/response DTOs
 │   │   ├── deps.py         # FastAPI Depends — auth / store injection
+│   │   ├── rate_limit.py   # per-IP sliding-window limiter
+│   │   ├── logging_setup.py # structlog JSON + request-id middleware
 │   │   ├── services/       # password (bcrypt), token (JWT)
 │   │   └── routers/        # auth, me
-│   ├── tests/              # pytest — password, token, full HTTP flow
+│   ├── tests/              # pytest — password, token, HTTP flow, rate limit
 │   └── pyproject.toml
 ├── frontend/               # Vite + React + TS
 │   ├── src/
@@ -28,7 +31,8 @@ A minimal authentication app:
 │   │   ├── components/     # ProtectedRoute
 │   │   ├── context/        # AuthContext / AuthProvider
 │   │   ├── lib/            # zod schemas, error helpers
-│   │   └── pages/          # SignIn / SignUp / Profile
+│   │   ├── pages/          # SignIn / SignUp / Profile
+│   │   └── test/           # Vitest — schemas, errors, ProtectedRoute
 │   └── package.json
 └── README.md
 ```
@@ -142,18 +146,33 @@ All config is environment-driven; sensible defaults let the server boot bare. Ov
 
 ## Tests
 
+### Backend (pytest, 21 tests)
+
 ```bash
 cd backend
 pytest
 ```
 
-Covers (19 tests):
-
 - bcrypt round-trip, salt uniqueness, malformed-hash safety.
 - JWT issue/parse, wrong secret rejected, expired token rejected, **`alg=none` rejected** (classic JWT confusion attack), garbage-token rejected.
 - HTTP flow — sign-up created, duplicate (incl. case-insensitive) → 409, invalid email → 422, short password → 422, sign-in OK sets HttpOnly+SameSite cookie, bad password and unknown user return the **same** `401` (no enumeration), `/me` requires auth, sign-out returns `204`, full sign-up → sign-in → /me → sign-out integration.
+- Rate limit — 11th sign-in within 1 min from one IP → `429`, 6th sign-up within 1 min → `429`.
 
-The frontend type-checks (`tsc --strict` with `noUncheckedIndexedAccess` and `verbatimModuleSyntax`) as part of `npm run build`.
+### Frontend (Vitest, 10 tests)
+
+```bash
+cd frontend
+npm test           # one-shot
+npm run typecheck  # strict TS check
+```
+
+- Credential schema validation — accepts valid creds, rejects non-emails, short passwords, oversized passwords.
+- Error-message extractor — pulls structured `error` field from backend responses, falls back gracefully.
+- `ProtectedRoute` — redirects to `/signin` on bootstrap failure, renders children on success.
+
+### CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs pytest, frontend typecheck, Vitest, and the production build on every push to `main` and every PR.
 
 ---
 

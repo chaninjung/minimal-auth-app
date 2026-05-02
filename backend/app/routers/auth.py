@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.config import Settings, get_settings
 from app.deps import COOKIE_NAME, get_dummy_hash, get_store
+from app.rate_limit import signin_rate_limit, signup_rate_limit
 from app.schemas import Credentials, UserView
 from app.services.password import check_password, hash_password
 from app.services.token import issue_token
@@ -35,6 +36,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     "/signup",
     status_code=status.HTTP_201_CREATED,
     response_model=UserView,
+    dependencies=[Depends(signup_rate_limit)],
 )
 def signup(
     body: Credentials,
@@ -55,7 +57,11 @@ def signup(
     return UserView(id=user.id, email=user.email)
 
 
-@router.post("/signin", response_model=UserView)
+@router.post(
+    "/signin",
+    response_model=UserView,
+    dependencies=[Depends(signin_rate_limit)],
+)
 def signin(
     body: Credentials,
     response: Response,

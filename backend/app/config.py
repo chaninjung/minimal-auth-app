@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # bcrypt work factor (cost = 2^rounds). Tests override to 4 for speed.
     bcrypt_rounds: int = 12
 
+    # --- Rate limiting ------------------------------------------------------
+    # Disabled in tests so a fixture can hammer the endpoints without
+    # tripping the limiter. Production / dev keep it on.
+    rate_limit_enabled: bool = True
+
     @property
     def token_ttl(self) -> timedelta:
         return timedelta(seconds=self.token_ttl_seconds)
