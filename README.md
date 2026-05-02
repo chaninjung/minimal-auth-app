@@ -11,7 +11,6 @@ A minimal authentication app:
 
 ```
 .
-├── .github/workflows/      # CI — backend pytest, frontend build/test
 ├── backend/                # Python / FastAPI server
 │   ├── app/
 │   │   ├── main.py         # FastAPI factory + lifespan + uvicorn entry
@@ -171,10 +170,6 @@ npm run typecheck  # strict TS check
 - Credential schema validation — accepts valid creds, rejects non-emails, short passwords, oversized passwords.
 - Error-message extractor — pulls structured `error` field from backend responses, falls back gracefully.
 - `ProtectedRoute` — redirects to `/signin` on bootstrap failure, renders children on success.
-
-### CI
-
-GitHub Actions (`.github/workflows/ci.yml`) runs pytest, frontend typecheck, Vitest, and the production build on every push to `main` and every PR.
 
 ---
 
