@@ -1,0 +1,58 @@
+# --- Build artifacts ---------------------------------------------------------
+# Go binaries (Windows + nix). Kept out so reviewers always rebuild fresh.
+backend/server
+backend/server.exe
+backend/cmd/server/server
+backend/cmd/server/server.exe
+
+# Vite production build
+frontend/dist/
+frontend/.vite/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# --- Dependencies ------------------------------------------------------------
+frontend/node_modules/
+
+# --- Runtime artifacts -------------------------------------------------------
+# SQLite databases created on first run.
+backend/*.db
+backend/*.db-journal
+backend/*.db-wal
+backend/*.db-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- Editor / OS noise -------------------------------------------------------
+.idea/
+.vscode/
+.claude/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+
+# --- Local env ---------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+
+# --- Reference materials ----------------------------------------------------
+# The original assignment PDF and the helper script that recreated it from
+# screenshots are kept locally for reference but should not be committed.
+Machine_Learning_Engineer_Assignment.pdf
+_build_pdf.py
+_build_report_pdf.py
+
+# --- Private deliverables ---------------------------------------------------
+# REPORT.md is submitted to HR separately (per assignment instructions),
+# not pushed publicly. Keep the source markdown and the generated PDF
+# local-only.
+REPORT.md
+REPORT.pdf
+Design_Report.pdf
+_report.css
+_report.html
